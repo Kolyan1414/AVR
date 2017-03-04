@@ -1,4 +1,0 @@
-SET_SCORE1:
-	ret
-SET_SCORE2:
-	ret
