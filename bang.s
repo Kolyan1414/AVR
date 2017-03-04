@@ -32,27 +32,27 @@
 .EQU PIND,0x10
 
 rjmp BOOT				;0
-nop						;1
-nop						;2
-nop						;3
-nop						;4
-nop						;5
-nop						;6
-nop						;7
-nop						;8
-rjmp TIM0_OVR			;9	
-nop						;10
-nop						;11
-nop						;12
-nop						;13
-nop						;14
-nop						;15
-nop						;16
-nop						;17
-nop						;18
-nop						;19
-nop						;20
-nop						;21
+rjmp INT0				;1
+rjmp INT1				;2
+nop					;3
+nop					;4
+nop					;5
+nop					;6
+nop					;7
+nop					;8
+rjmp TIM0_OVR				;9	
+nop					;10
+nop					;11
+nop					;12
+nop					;13
+nop					;14
+nop					;15
+nop					;16
+nop					;17
+nop					;18
+nop					;19
+nop					;20
+nop					;21
 
 MAIN
 	nop
