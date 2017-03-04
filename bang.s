@@ -54,6 +54,6 @@ nop					;19
 nop					;20
 nop					;21
 
-MAIN
+MAIN:
 	nop
 	rjmp MAIN
