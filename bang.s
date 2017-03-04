@@ -6,6 +6,7 @@
 .EQU TCCR0,0x33			;TIME COUNTER CONTROL REG.
 .EQU TCNT0,0x32			;T/C FLAG REG			!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 .EQU OCR0,0x3C			;TOP
+.EQU GICR,0x3B			;TOP
 
 .EQU PORTA,0x1B			;PORTA is 1st player points
 .EQU DDRA,0x1A
@@ -23,16 +24,16 @@
 .EQU DDRD,0x11
 .EQU PIND,0x10
 
-rjmp BOOT				;0
-rjmp INT0				;1
-rjmp INT1				;2
+rjmp BOOT			;0
+nop					;1 rjmp INT0
+nop					;2 rjmp INT1
 nop					;3
 nop					;4
 nop					;5
 nop					;6
 nop					;7
 nop					;8
-rjmp TIM0_OVR				;9	
+nop 				;9 rjmp TIM0_OVR
 nop					;10
 nop					;11
 nop					;12
@@ -47,85 +48,123 @@ nop					;20
 nop					;21
 
 MAIN:
-	BOOT_FLASH1
+	rjmp BOOT_LED
 	rjmp MAIN
 
-BOOT:					;set MCU configuration like ports, pins, registers...
+BOOT:				;set MCU configuration like ports, pins, registers...
 	ldi r16, 0x2 		;setting stack pointer
 	out SPH, r16
 	
 	ldi r16, 0x5F
 	out SPL, r16
 
-	ser r16				;r16=11111111
+	ser r16
+	mov r1, r16
+	mov r2, r16
+
+	ser r16			;r16=11111111
 	out DDRA, r16		;ALL PORTA IS OUTPUT
 	out DDRB, r16		;ALL PORTB IS OUTPUT
+	out DDRC, r16		;ALL PORTC IS OUTPUT
 	
 	clr r16
 	out PORTA, r16		;all PORTA pins are set to 0 output
 	out PORTB, r16		;all PORTB pins are set to 0 output
+	out PORTC, r16		;all PORTC pins are set to 0 output
 	
-	ldi r17,0xF8		;11111000 1st, 2nd and 3d are input, other are output
-	out DDRC,r17
+	ldi r16, 0xF9		;r16=11111001
+	out DDRD, r16		;int0/1 are input, other are output
+	ldi r16, 0x06		;r16=00000110
+	out PORTD, r16		;input pins turn pull resistance on
+
+	;timer settings
 	
-	ldi r17,0x7			;00000111 LEDs off, buttons on
-	out PORTC,r17
+
+	ldi r16, 0x8		;TOP is 8 <==> 1 ms 
+	out OCR0,r16
+
+	ldi r16, 0xD		;00001101 == cs/1024
+	out TCCR0,r16		;interrupt in 1ms
+
+	ldi r16, 0x1		;00000001
+	out TIMSK,r16		;allow interrupt t0
+	
+	ldi r16,0xC0
+	out GICR, r16		;allow interrupt int1/0
+
+	sei			;allow interrupt global
+
+	clr r16			;player #1 points
+	clr r17			;player #2 points
 
 	rjmp MAIN
 
-;Задержка = r16*10^(-1)с (частота МК 8МГц)
+;Задержка = r16*r17*10^(-1)с (частота МК 8МГц)
 DELAY:		
 	push r16							
 	push r17 		
 	push r18
-	push r19					
-	ldi r17, 0xFF
+	push r19
 	ldi r18, 0xFF
-	ldi r19, 0x0B
+	ldi r19, 0xFF
 
 	delay_iter:
-		dec r17
+		dec r19
 		brne delay_iter					;256*
 			dec r18	
 			brne delay_iter				;256*
-				dec r19
-				brne delay_iter			;12
+				dec r17	
+				brne delay_iter			;r17*
 					dec r16
-					brne delay_iter
+					brne delay_iter		;r16*
 	pop r19
 	pop r18
 	pop r17
 	pop r16
-ret 									;=1/(8*10^(6)) * 256*256*12 =  0.098304 (плюс накладные расходы) 	
+ret 									;=1/(8*10^(6)) * 256*256*1 =  0.008192
 
-BOOT_FLASH1:			;players LEDs flash in the beginning of the game
+;players LEDs flash in the beginning of the game
+BOOT_LED:
 	
 	push r18
 	push r19
+	push r17
 	push r16
 
 	ldi r19, 0x80
-	clr r1
 
-SET_PORT:
+LED1:
 	ldi r18, 0x01
 	out PORTA, r18
+	out PORTB, r18
 CYCLE:
-	cp r18, r19			;if the last LED is flashing
-	breq SET_PORT		;flash the first LED
-	lsl	r18				;flash the next one
-	out PORTA, r18
-
 	ldi r16, 0x01
+	ldi r17, 0x03
 	rcall DELAY
 
-	rjmp CYCLE
+	cp r18, r19			;if the last LED is flashing
+	breq LED1			;flash the first LED
+	lsl	r18				;flash the next one
 
+	;and r18, r1
+	out PORTA, r18
+	;and r18, r2
+	out PORTB, r18
+
+	mov r16, r1
+	mov r17, r2
+	or r16, r17
+	cpi r16, 0
+	breq EXIT
+
+	rjmp CYCLE
+EXIT:
 	pop r16
+	pop r17
 	pop r19
 	pop r18
 
-	ret
+	reti
 
 ;ФУНКЦИЯ "led_blink"
 
@@ -139,7 +178,7 @@ CYCLE:
 
 led_blink: 								
 	led_blink_iter:
-		rcall delay
+		rcall DELAY
 			
 		com r20
 		com r21
@@ -151,7 +190,7 @@ led_blink:
 		out PORTD, r23
 		push r16
 		mov r16, r17
-		rcall delay
+		rcall DELAY
 
 		com r20
 		com r21
@@ -165,4 +204,46 @@ led_blink:
 		
 		dec r19
 		brne led_blink_iter
+ret
+
+;ФУНКЦИЯ "random"(на основе timer0)
+;!!!Добавить в boot (если этого еще нет)
+.EQU TIMSK,0x39		;TIME COUNT OUTPUT COMPARE MATH INTERRUPT ENAB
+.EQU TCCR0,0x33		;TIME COUNTER CONTROL REG.
+.EQU TCNT0,0x32		;T/C FLAG REG
+
+	push r16
+	ldi r16,0x01								;Запуск таймера (на вход поступает тактовая частота)
+	out TCCR0,r16	
+
+	ldi r16,0x00								;Запрет обработки прерываний таймера
+	out TIMSK,r16		
+	pop r16
+;!!!
+
+;!!!PORTC все выходы
+
+RANDOM:										;Подает сигнал к началу раунда с задержкой 3+random с
+	push r16
+	push r17								;Задержка 3с после нажатия двух кнопок о готовности(перед началом рандомного времени)
+	ldi r16,0x1E
+	ldi r17,0x0C
+	rcall DELAY
+	
+	in r16,TCNT0							;Считываем время из таймера	
+	lsr r16									;Делим на 8, чтобы получить время рандомной задержки ~r16*delay
+	lsr r16
+	lsr r16
+	ldi r17,0x0B	
+	rcall DELAY							;Рандомная задержка ~r16*delay
+	
+	ldi r16,0xFF							;Зажигание сигнальных диодов(весь PORTC)
+	out PORTC,r16							
+	ldi r16,0x14							;Сигнальные диоды горят 2с
+	rcall DELAY 
+	ldi r16,0x00
+	out PORTC,r16							;Сигнальные диоды гаснут
+
+	pop r17
+	pop r16
 ret
