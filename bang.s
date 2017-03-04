@@ -26,15 +26,15 @@
 .EQU PIND,0x10
 
 rjmp BOOT			;0
-nop					;1 rjmp INT0
-nop					;2 rjmp INT1
+rjmp INT0			;1 rjmp INT0
+rjmp INT1			;2 rjmp INT1
 nop					;3
 nop					;4
 nop					;5
 nop					;6
 nop					;7
 nop					;8
-nop 				;9 rjmp TIM0_OVR
+rjmp TIM0_OVR		;9 rjmp TIM0_OVR
 nop					;10
 nop					;11
 nop					;12
@@ -96,10 +96,10 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	ldi r16, 0x0A
 	out MCUCR, r16
 
-	sei			;allow interrupt global
+	sei					;allow interrupt global
 
-	clr r16			;player #1 points
-	clr r17			;player #2 points
+	clr r16				;player #1 points
+	clr r17				;player #2 points
 
 	rjmp MAIN
 
@@ -150,9 +150,9 @@ CYCLE:
 	breq LED1			;flash the first LED
 	lsl	r18				;flash the next one
 
-	;and r18, r1
+	and r18, r1
 	out PORTA, r18
-	;and r18, r2
+	and r18, r2
 	out PORTB, r18
 
 	mov r16, r1
@@ -285,7 +285,7 @@ THE_GAME0:
 	
 	out PORTA, r16
 
-	;rcall PUNISH_2
+	rcall PUNISH_2
 
 	mov r18, r16
 	cpi r18, 0xFF
@@ -299,7 +299,7 @@ SECOND_WON:
 	
 	out PORTB, r17
 	
-	;rcall PUNISH_1	
+	rcall PUNISH_1	
 
 	mov r18, r17
 	cpi r18, 0xFF
@@ -342,7 +342,7 @@ THE_GAME1:
 	
 	out PORTB, r17
 
-	;rcall PUNISH_1
+	rcall PUNISH_1
 
 	mov r18, r17
 	cpi r18, 0xFF
@@ -356,7 +356,7 @@ FIRST_WON:
 	
 	out PORTA, r16
 	
-	;rcall PUNISH_1	
+	rcall PUNISH_1	
 
 	mov r18, r16
 	cpi r18, 0xFF
@@ -391,3 +391,53 @@ rcall DELAY
 
 	rjmp BOOT
 	ret
+
+PUNISH_1:
+	push r18							
+	push r17
+	push r16
+	in r18,PORTD						;Напряжение на PD0, земля на PD1				
+	ori r18, 0x01
+	out PORTD,r18
+	
+	ldi r17,0x03						;Мотор работает 0.1с
+	ldi r16,0x01
+	rcall DELAY
+
+	andi r18,0xFC						;Напряжение на PD1, земля на PD0
+	ori r18, 0x02
+	out PORTD,r18					
+	rcall DELAY							;Мотор работает 0,1с
+
+	andi r18,0xFC
+	out PORTD,r18						;PD0 и PD1 - земля
+
+	pop r16
+	pop r17
+	pop r18
+ret
+
+PUNISH_2:
+	push r18							
+	push r17
+	push r16
+	in r18,PORTD						;Напряжение на PD1, земля на PD2				
+	ori r18, 0x02
+	out PORTD,r18
+	
+	ldi r17,0x03						;Мотор работает 0.1с
+	ldi r16,0x01
+	rcall DELAY
+
+	andi r18,0xFC						;Напряжение на PD0, земля на PD1
+	ori r18, 0x01
+	out PORTD,r18					
+	rcall DELAY							;Мотор работает 0,1с
+
+	andi r18,0xFC
+	out PORTD,r18						;PD0 и PD1 - земля
+
+	pop r16
+	pop r17
+	pop r18
+ret
