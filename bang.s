@@ -26,15 +26,15 @@
 .EQU PIND,0x10
 
 rjmp BOOT			;0
-nop;rjmp INT0			;1 rjmp INT0
-nop;rjmp INT1			;2 rjmp INT1
+rjmp INT0			;1 rjmp INT0
+rjmp INT1			;2 rjmp INT1
 nop					;3
 nop					;4
 nop					;5
 nop					;6
 nop					;7
 nop					;8
-nop;rjmp TIM0_OVR		;9 rjmp TIM0_OVR
+rjmp TIM0_OVR		;9 rjmp TIM0_OVR
 nop					;10
 nop					;11
 nop					;12
@@ -50,9 +50,6 @@ nop					;21
 
 MAIN:
 	rcall BOOT_LED
-NOP_CYCLE:
-	nop
-	rjmp NOP_CYCLE
 	rjmp MAIN
 
 BOOT:				;set MCU configuration like ports, pins, registers...
@@ -64,9 +61,9 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 
 	ser r16
 	mov r0, r16
-	clr r16
+	ser r16
 	mov r1, r16
-	clr r16
+	ser r16
 	mov r2, r16
 
 	ser r16			;r16=11111111
@@ -145,7 +142,10 @@ BOOT_LED:
 
 LED1:
 	ldi r18, 0x01
+	and r18, r1
 	out PORTA, r18
+	ldi r18, 0x01
+	and r18, r2
 	out PORTB, r18
 CYCLE:
 	ldi r16, 0x01
@@ -169,12 +169,6 @@ CYCLE:
 
 	rjmp CYCLE
 EXIT:
-	ser r17
-	out PORTB, r17
-
-	ldi r16, 0x01
-	ldi r17, 0x0F
-	rcall DELAY
 
 	pop r16
 	pop r17
