@@ -3,6 +3,7 @@
 .include "interrupt.inc"
 .include "button.inc"
 .include "engine.inc"
+.include "blink.inc"
 
 
 .EQU SREG,0x3F			;STATUS REG.
