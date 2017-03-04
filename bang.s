@@ -15,6 +15,8 @@
 .EQU TCNT0,0x32			;T/C FLAG REG			!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 .EQU OCR0,0x3C			;TOP
 
+.EQU GICR,0x3B			;register for int0/1 interruption
+
 .EQU PORTA,0x1B			;PORTA is 1st player points
 .EQU DDRA,0x1A
 .EQU PINA,0x19
