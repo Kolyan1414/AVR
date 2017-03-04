@@ -6,9 +6,8 @@
 .EQU TCCR0,0x33			;TIME COUNTER CONTROL REG.
 .EQU TCNT0,0x32			;T/C FLAG REG			!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 .EQU OCR0,0x3C			;TOP
-.EQU GICR,0x3B			;TOP
-
 .EQU GICR,0x3B			;register for int0/1 interruption
+.EQU MCUCR, 0x35		;MCU control register
 
 .EQU PORTA,0x1B			;PORTA is 1st player points
 .EQU DDRA,0x1A
@@ -82,17 +81,20 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	;timer settings
 	
 
-	ldi r16, 0x8		;TOP is 8 <==> 1 ms 
-	out OCR0,r16
+	;ldi r16, 0x8		;TOP is 8 <==> 1 ms 
+	;out OCR0,r16
 
-	ldi r16, 0xD		;00001101 == cs/1024
-	out TCCR0,r16		;interrupt in 1ms
+	;ldi r16, 0xD		;00001101 == cs/1024
+	;out TCCR0,r16		;interrupt in 1ms
 
-	ldi r16, 0x1		;00000001
-	out TIMSK,r16		;allow interrupt t0
+	;ldi r16, 0x1		;00000001
+	;out TIMSK,r16		;allow interrupt t0
 	
 	ldi r16,0xC0
 	out GICR, r16		;allow interrupt int1/0
+
+	ldi r16, 0x0A
+	out MCUCR, r16
 
 	sei			;allow interrupt global
 
@@ -249,3 +251,143 @@ RANDOM:										;Подает сигнал к началу раунда с за
 	pop r17
 	pop r16
 ret
+
+TIM0_OVR:
+	reti
+
+INT0:
+	push r18		;save this registers
+
+	mov r18, r0
+	cpi r18, 0x0		;if r0 == 0 ==> game is started	
+	breq THE_GAME0
+	
+	clr r1			;r1=0 ==> 1st player is ready
+	
+	mov r18, r2	
+	cpi r18, 0x0
+	brne EXIT_INT0
+	
+	clr r0
+
+	rjmp EXIT_INT0
+
+THE_GAME0:
+
+	in r18, PINC
+	
+	cpi r18, 0xFF		;if there is signal --> 1st won
+	
+	brne SECOND_WON		;otherwise 2nd won
+	
+	lsl r16  		;00001111 --> 00011111
+	inc r16
+	
+	out PORTA, r16
+
+	;rcall PUNISH_2
+
+	mov r18, r16
+	cpi r18, 0xFF
+	brne EXIT_INT0		;if <8 ==> exit; else call WIN
+	
+	rcall WIN
+
+SECOND_WON:
+	lsl r17
+	inc r17
+	
+	out PORTB, r17
+	
+	;rcall PUNISH_1	
+
+	mov r18, r17
+	cpi r18, 0xFF
+	brne EXIT_INT0		;if <8 ==> exit; else call WIN
+	
+	rcall WIN
+
+EXIT_INT0:
+	pop r18
+
+	reti
+
+
+INT1:
+	push r18		;save this registers
+
+	mov r18, r0
+	cpi r18, 0x0		;if r0 == 0 ==> game is started	
+	breq THE_GAME1
+	
+	clr r2			;r2=0 ==> 2nd player is ready
+	
+	mov r18, r1	
+	cpi r18, 0x0
+	brne EXIT_INT1
+	
+	clr r0
+	
+	rjmp EXIT_INT1
+
+THE_GAME1:
+	in r18, PINC
+	
+	cpi r18, 0xFF		;if there is signal --> 2nd won
+	
+	brne FIRST_WON		;else --> 1st won
+	
+	lsl r17  		;00001111 --> 00011111
+	inc r17
+	
+	out PORTB, r17
+
+	;rcall PUNISH_1
+
+	mov r18, r17
+	cpi r18, 0xFF
+	brne EXIT_INT1		;if <8 ==> exit; else call WIN
+	
+	rcall WIN
+
+FIRST_WON:
+	lsl r16
+	inc r16
+	
+	out PORTA, r16
+	
+	;rcall PUNISH_1	
+
+	mov r18, r16
+	cpi r18, 0xFF
+	brne EXIT_INT1
+	
+	rcall WIN
+
+EXIT_INT1:
+	pop r18
+
+	reti
+
+WIN:
+	cpi r16,0xFF
+	breq FIRST_PROF
+	
+	ser r16
+	out PORTB, r16
+	clr r16
+	out PORTA, r16
+
+FIRST_PROF:
+	clr r16
+	out PORTB, r16
+	ser r16
+	out PORTA, r16
+
+	ldi r17,0x0B
+	ldi r16,0x1E
+
+rcall DELAY
+
+	rjmp BOOT
+	ret
