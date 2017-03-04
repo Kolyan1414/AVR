@@ -1,5 +1,5 @@
 ;Задержка = r16*10^(-1)с (частота МК 8МГц)
-delay:		
+DELAY:		
 	push r16							
 	push r17 		
 	push r18

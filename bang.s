@@ -1,9 +1,7 @@
 .include "boot.inc"
-.include "score.inc"
+.include "players.inc"
 .include "interrupt.inc"
-.include "button.inc"
-.include "engine.inc"
-.include "blink.inc"
+.include "delay.s"
 
 
 .EQU SREG,0x3F			;STATUS REG.
@@ -55,5 +53,5 @@ nop					;20
 nop					;21
 
 MAIN:
-	nop
+	BOOT_FLASH1
 	rjmp MAIN
