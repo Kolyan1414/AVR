@@ -49,7 +49,14 @@ nop					;20
 
 MAIN:
 	rcall BOOT_LED
-	rjmp MAIN
+
+	push r16
+	ser r16
+	out PORTC, r16
+	pop r16
+metk:
+	nop			;random?
+	rjmp metk
 
 BOOT:				;set MCU configuration like ports, pins, registers...
 	ldi r16, 0x2 		;setting stack pointer
@@ -75,9 +82,9 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	out PORTB, r16		;all PORTB pins are set to 0 output
 	out PORTC, r16		;all PORTC pins are set to 0 output
 	
-	ldi r16, 0xF9		;r16=11111001
+	ldi r16, 0xF3		;r16=11110011
 	out DDRD, r16		;int0/1 are input, other are output
-	ldi r16, 0x06		;r16=00000110
+	ldi r16, 0x0C		;r16=00001100
 	out PORTD, r16		;input pins turn pull resistance on
 
 	;timer settings
@@ -129,14 +136,12 @@ ret 									;=1/(8*10^(6)) * 256*256*1 =  0.008192
 
 ;players LEDs flash in the beginning of the game
 BOOT_LED:
-	
 	push r18
 	push r19
 	push r17
 	push r16
 
 	ldi r19, 0x80
-
 LED1:
 	ldi r18, 0x01
 	and r18, r1
@@ -144,6 +149,7 @@ LED1:
 	ldi r18, 0x01
 	and r18, r2
 	out PORTB, r18
+	ldi r18, 0x01
 CYCLE:
 	ldi r16, 0x01
 	ldi r17, 0x03
@@ -153,10 +159,14 @@ CYCLE:
 	breq LED1			;flash the first LED
 	lsl	r18				;flash the next one
 
+	push r18
+	push r18
 	and r18, r1
 	out PORTA, r18
+	pop r18
 	and r18, r2
 	out PORTB, r18
+	pop r18
 
 	mov r16, r1
 	mov r17, r2
@@ -268,8 +278,8 @@ INT0:
 	
 	clr r1			;r1=0 ==> 1st player is ready
 	
-	clr r16
-	out PORTA, r16
+	clr r30
+	out PORTA, r30
 
 	mov r18, r2	
 	cpi r18, 0x0
@@ -287,32 +297,31 @@ THE_GAME0:
 	
 	brne SECOND_WON		;otherwise 2nd won
 	
-	lsl r16  		;00001111 --> 00011111
-	inc r16
+	lsl r30  		;00001111 --> 00011111
+	inc r30
 	
-	out PORTA, r16
+	out PORTA, r30
 
-	rcall PUNISH_2
+	;rcall PUNISH_2
 
-	mov r18, r16
+	mov r18, r30
 	cpi r18, 0xFF
 	brne EXIT_INT0		;if <8 ==> exit; else call WIN
 	
-	rcall WIN
+	rcall BOOT
 
 SECOND_WON:
-	lsl r17
-	inc r17
+	lsl r31
+	inc r31
+	out PORTB, r31
 	
-	out PORTB, r17
-	
-	rcall PUNISH_1	
+	;rcall PUNISH_1	
 
-	mov r18, r17
+	mov r18, r31
 	cpi r18, 0xFF
 	brne EXIT_INT0		;if <8 ==> exit; else call WIN
 	
-	rcall WIN
+	rcall BOOT
 
 EXIT_INT0:
 	pop r18
@@ -328,8 +337,8 @@ INT1:
 	
 	clr r2			;r2=0 ==> 2nd player is ready
 	
-	clr r17
-	out PORTB, r17
+	clr r31
+	out PORTB, r31
 
 	mov r18, r1	
 	cpi r18, 0x0
@@ -346,32 +355,32 @@ THE_GAME1:
 	
 	brne FIRST_WON		;else --> 1st won
 	
-	lsl r17  		;00001111 --> 00011111
-	inc r17
+	lsl r31 		;00001111 --> 00011111
+	inc r31
 	
-	out PORTB, r17
+	out PORTB, r31
 
-	rcall PUNISH_1
+	;rcall PUNISH_1
 
-	mov r18, r17
+	mov r18, r31
 	cpi r18, 0xFF
 	brne EXIT_INT1		;if <8 ==> exit; else call WIN
 	
-	rcall WIN
+	rcall BOOT
 
 FIRST_WON:
-	lsl r16
-	inc r16
+	lsl r30
+	inc r30
 	
-	out PORTA, r16
+	out PORTA, r30
 	
-	rcall PUNISH_2
+	;rcall PUNISH_2
 
-	mov r18, r16
+	mov r18, r30
 	cpi r18, 0xFF
 	brne EXIT_INT1
 	
-	rcall WIN
+	rcall BOOT
 
 EXIT_INT1:
 	pop r18
@@ -379,6 +388,9 @@ EXIT_INT1:
 	reti
 
 WIN:
+	clr r16			;PORTC = 0x00
+	mov PORTC, r16
+
 	cpi r16,0xFF
 	breq FIRST_PROF
 	
