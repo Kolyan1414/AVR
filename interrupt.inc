@@ -61,7 +61,6 @@ INT0:
 	breq THE_GAME0
 	
 	clr r1			;r1=0 ==> 1st player is ready
-	
 	clr r16
 	out PORTA, r16
 
@@ -76,37 +75,25 @@ INT0:
 THE_GAME0:
 
 	in r18, PINC
-	
 	cpi r18, 0xFF		;if there is signal --> 1st won
-	
 	brne SECOND_WON		;otherwise 2nd won
 	
 	lsl r16  		;00001111 --> 00011111
 	inc r16
-	
 	out PORTA, r16
-
-	rcall PUNISH_2
 
 	mov r18, r16
 	cpi r18, 0xFF
 	brne EXIT_INT0		;if <8 ==> exit; else call WIN
-	
-	rcall WIN
 
 SECOND_WON:
 	lsl r17
 	inc r17
-	
 	out PORTB, r17
-	
-	rcall PUNISH_1	
 
 	mov r18, r17
 	cpi r18, 0xFF
 	brne EXIT_INT0		;if <8 ==> exit; else call WIN
-	
-	rcall WIN
 
 EXIT_INT0:
 	pop r18
@@ -121,7 +108,6 @@ INT1:
 	breq THE_GAME1
 	
 	clr r2			;r2=0 ==> 2nd player is ready
-	
 	clr r17
 	out PORTB, r17
 
@@ -135,23 +121,32 @@ INT1:
 
 THE_GAME1:
 	in r18, PINC
-	
-	cpi r18, 0xFF		;if there is signal --> 2nd won
-	
+	cpi r18, 0xFF		;if there is signal --> 2nd won	
 	brne FIRST_WON		;else --> 1st won
 	
 	lsl r17  		;00001111 --> 00011111
 	inc r17
-	
 	out PORTB, r17
-
-	rcall PUNISH_1
 
 	mov r18, r17
 	cpi r18, 0xFF
 	brne EXIT_INT1		;if <8 ==> exit; else call WIN
 	
 	rcall WIN
+
+FIRST_WON:
+	lsl r16
+	inc r16
+	out PORTA, r16
+	
+	mov r18, r16
+	cpi r18, 0xFF
+	brne EXIT_INT1
+
+EXIT_INT1:
+	pop r18
+
+	reti
 
 
 BOOT:				;set MCU configuration like ports, pins, registers...
