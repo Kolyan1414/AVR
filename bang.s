@@ -34,7 +34,7 @@ nop					;5
 nop					;6
 nop					;7
 nop					;8
-rjmp TIM0_OVR		;9 rjmp TIM0_OVR
+nop;rjmp TIM0_OVR		;9 rjmp TIM0_OVR
 nop					;10
 nop					;11
 nop					;12
@@ -46,7 +46,6 @@ nop					;17
 nop					;18
 nop					;19
 nop					;20
-nop					;21
 
 MAIN:
 	rcall BOOT_LED
@@ -82,8 +81,6 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	out PORTD, r16		;input pins turn pull resistance on
 
 	;timer settings
-	
-
 	;ldi r16, 0x8		;TOP is 8 <==> 1 ms 
 	;out OCR0,r16
 
@@ -259,8 +256,8 @@ RANDOM:										;Подает сигнал к началу раунда с за
 	pop r16
 ret
 
-TIM0_OVR:
-	reti
+;TIM0_OVR:
+;	reti
 
 INT0:
 	push r18		;save this registers
@@ -322,7 +319,6 @@ EXIT_INT0:
 
 	reti
 
-
 INT1:
 	push r18		;save this registers
 
@@ -332,6 +328,9 @@ INT1:
 	
 	clr r2			;r2=0 ==> 2nd player is ready
 	
+	clr r17
+	out PORTB, r17
+
 	mov r18, r1	
 	cpi r18, 0x0
 	brne EXIT_INT1
@@ -366,7 +365,7 @@ FIRST_WON:
 	
 	out PORTA, r16
 	
-	rcall PUNISH_1	
+	rcall PUNISH_2
 
 	mov r18, r16
 	cpi r18, 0xFF
@@ -396,11 +395,9 @@ FIRST_PROF:
 
 	ldi r17,0x0B
 	ldi r16,0x1E
-
-rcall DELAY
+	rcall DELAY
 
 	rjmp BOOT
-	ret
 
 PUNISH_1:
 	push r18							
