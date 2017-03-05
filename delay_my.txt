@@ -1,0 +1,34 @@
+delay_my:			;time = r18*0.08192 s
+	push r16
+	push r17
+	push r18
+	
+	clr r16
+	clr r17
+
+	cpi r18,0x0
+	brne skip_my
+	inc r18
+	
+skip_my:
+metk_delay:
+	dec r16
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	brne metk_delay
+
+	dec r17
+	brne metk_delay
+
+	dec r18
+	brne metk_delay
+
+	pop r18
+	pop r17
+	pop r16
+
