@@ -219,8 +219,12 @@ ADD_ZERO:
 	ret
 
 INT0:
+	cli
 	push r18		;save this registers
 	push r17
+
+	clr r17
+	our PORTC,r16
 
 	mov r18, r0
 	cpi r18, 0x0		;if r0 == 0 ==> game is started	
@@ -271,17 +275,22 @@ SECOND_WON:
 	rjmp WIN
 
 EXIT_INT0:
-	ldi r17,0x2
+	ldi r17,0x8
 	rcall DELAY
 
 	pop r17
 	pop r18
-
+	
+	sei
 	reti
 
 INT1:
+	cli
 	push r18		;save this registers
 	push r17
+
+	clr r17
+	our PORTC,r16
 
 	mov r18, r0
 	cpi r18, 0x0		;if r0 == 0 ==> game is started	
@@ -331,12 +340,14 @@ FIRST_WON:
 	rjmp WIN
 
 EXIT_INT1:
-	ldi r17,0x2
+	ldi r17,0x8
 	rcall DELAY
 
 	pop r17
 	pop r18
 
+	sei
+	
 	reti
 
 WIN:
