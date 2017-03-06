@@ -87,15 +87,13 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	ldi r16, 0x0C		;r16=00001100
 	out PORTD, r16		;input pins turn pull resistance on
 
-	;timer settings
-	;ldi r16, 0x8		;TOP is 8 <==> 1 ms 
-	;out OCR0,r16
+	push r16
+	ldi r16,0x01								;Запуск таймера (на вход поступает тактовая частота)
+	out TCCR0,r16	
 
-	;ldi r16, 0xD		;00001101 == cs/1024
-	;out TCCR0,r16		;interrupt in 1ms
-
-	;ldi r16, 0x1		;00000001
-	;out TIMSK,r16		;allow interrupt t0
+	ldi r16,0x00								;Запрет обработки прерываний таймера
+	out TIMSK,r16		
+	pop r16
 	
 	ldi r16,0xC0
 	out GICR, r16		;allow interrupt int1/0
@@ -110,29 +108,30 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 
 	rjmp MAIN
 
-;Задержка = r16*r17*10^(-1)с (частота МК 8МГц)
-DELAY:		
-	push r16							
-	push r17 		
+DELAY:										;25ms when r17 = 0x01								
+	push r19 		
 	push r18
-	push r19
-	ldi r18, 0xFF
+	push r17
+
 	ldi r19, 0xFF
 
-	delay_iter:
+	for1:
+		ldi r18, 0xF0
+		for2:
+			pop r17
+			push r17
+			for3:
+				dec r17
+				brne for3
+			dec r18
+		brne for2
 		dec r19
-		brne delay_iter					;256*
-			dec r18	
-			brne delay_iter				;256*
-				dec r17	
-				brne delay_iter			;r17*
-					dec r16
-					brne delay_iter		;r16*
-	pop r19
-	pop r18
+	brne for1
+
 	pop r17
-	pop r16
-ret 									;=1/(8*10^(6)) * 256*256*1 =  0.008192
+	pop r18
+	pop r19
+ret
 
 ;players LEDs flash in the beginning of the game
 BOOT_LED:
@@ -151,7 +150,6 @@ LED1:
 	out PORTB, r18
 	ldi r18, 0x01
 CYCLE:
-	ldi r16, 0x01
 	ldi r17, 0x03
 	rcall DELAY
 
@@ -175,14 +173,13 @@ CYCLE:
 	breq EXIT
 
 	rjmp CYCLE
-EXIT:
 
+EXIT:
 	pop r16
 	pop r17
 	pop r19
 	pop r18
-
-	reti
+	ret
 
 ;ФУНКЦИЯ "led_blink"
 
@@ -224,47 +221,53 @@ led_blink:
 		brne led_blink_iter
 ret
 
-;ФУНКЦИЯ "random"(на основе timer0)
-;!!!Добавить в boot (если этого еще нет)
-.EQU TIMSK,0x39		;TIME COUNT OUTPUT COMPARE MATH INTERRUPT ENAB
-.EQU TCCR0,0x33		;TIME COUNTER CONTROL REG.
-.EQU TCNT0,0x32		;T/C FLAG REG
-
-	push r16
-	ldi r16,0x01								;Запуск таймера (на вход поступает тактовая частота)
-	out TCCR0,r16	
-
-	ldi r16,0x00								;Запрет обработки прерываний таймера
-	out TIMSK,r16		
-	pop r16
-;!!!
-
-;!!!PORTC все выходы
-
 RANDOM:										;Подает сигнал к началу раунда с задержкой 3+random с
-	push r16
-	push r17								;Задержка 3с после нажатия двух кнопок о готовности(перед началом рандомного времени)
-	ldi r16,0x1E
-	ldi r17,0x0C
+	push r17
+
+	ldi r17,0x6A							;Задержка ~2.5с после нажатия двух кнопок о готовности(перед началом рандомного времени)
 	rcall DELAY
 	
-	in r16,TCNT0							;Считываем время из таймера	
-	lsr r16									;Делим на 8, чтобы получить время рандомной задержки ~r16*delay
-	lsr r16
-	lsr r16
-	ldi r17,0x0B	
-	rcall DELAY							;Рандомная задержка ~r16*delay
-	
-	ldi r16,0xFF							;Зажигание сигнальных диодов(весь PORTC)
-	out PORTC,r16							
-	ldi r16,0x14							;Сигнальные диоды горят 2с
-	rcall DELAY 
-	ldi r16,0x00
-	out PORTC,r16							;Сигнальные диоды гаснут
+	in r17,TCNT0							;Считываем время из таймера
+
+	rcall CSR17										;Multiplies r17 by 2
+	rcall CSR17 									;Multiplies r17 by 2
+	rcall CSR17 									;Multiplies r17 by 2
+
+	out PORTA, r17
+	rcall DELAY
+
+	ser r17									;Зажигание сигнальных диодов(весь PORTC)
+	out PORTC, r17
+	ldi r17, 0x50
+	rcall DELAY
+	clr r17
+	out PORTC, r17							;Сигнальные диоды гаснут
 
 	pop r17
-	pop r16
-ret
+	ret
+
+CSR17:			;CycleShiftRight, works only with r17; Example: 0x11000101 -> 0x11100010 -> 0x01110001 -> 0x10111000
+	push r18
+
+	ldi r18, 0x01
+	push r17
+	and r17, r18
+	cpi r17, 0x00
+	brne ADD_ONE
+
+	pop r17
+	lsr r17
+	rjmp ADD_ZERO
+
+ADD_ONE:
+	ldi r18, 0x80
+	pop r17
+	lsr r17
+	add r17, r18
+
+ADD_ZERO:
+	pop r18
+	ret
 
 ;TIM0_OVR:
 ;	reti
@@ -419,14 +422,17 @@ PUNISH_1:
 	ori r18, 0x01
 	out PORTD,r18
 	
-	ldi r17,0x03						;Мотор работает 0.1с
+	ldi r17,0x02						;Мотор работает 0.1с
 	ldi r16,0x01
 	rcall DELAY
 
 	andi r18,0xFC						;Напряжение на PD1, земля на PD0
 	ori r18, 0x02
 	out PORTD,r18					
-	rcall DELAY							;Мотор работает 0,1с
+
+	ldi r17,0x03						;Мотор работает 0.2с
+	ldi r16,0x01
+	rcall DELAY
 
 	andi r18,0xFC
 	out PORTD,r18						;PD0 и PD1 - земля
@@ -444,14 +450,17 @@ PUNISH_2:
 	ori r18, 0x02
 	out PORTD,r18
 	
-	ldi r17,0x03						;Мотор работает 0.1с
+	ldi r17,0x02						;Мотор работает 0.1с
 	ldi r16,0x01
 	rcall DELAY
 
 	andi r18,0xFC						;Напряжение на PD0, земля на PD1
 	ori r18, 0x01
 	out PORTD,r18					
-	rcall DELAY							;Мотор работает 0,1с
+	
+	ldi r17,0x03						;Мотор работает 0.2с
+	ldi r16,0x01
+	rcall DELAY
 
 	andi r18,0xFC
 	out PORTD,r18						;PD0 и PD1 - земля
