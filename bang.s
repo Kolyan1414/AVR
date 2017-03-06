@@ -1,4 +1,4 @@
-.EQU SREG,0x3F			;STATUS REG.
+﻿.EQU SREG,0x3F			;STATUS REG.
 .EQU SPH,0x3E			;ST.POINTER(HIGH)
 .EQU SPL,0x3D			;ST.POINTER(LOW)
 	
@@ -55,7 +55,7 @@ MAIN:
 	out PORTC, r16
 	pop r16
 metk:
-	nop			;random?
+	rcall RANDOM			;random?
 	rjmp metk
 
 BOOT:				;set MCU configuration like ports, pins, registers...
@@ -102,9 +102,6 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	out MCUCR, r16
 
 	sei					;allow interrupt global
-
-	clr r16				;player #1 points
-	clr r17				;player #2 points
 
 	rjmp MAIN
 
@@ -304,27 +301,39 @@ THE_GAME0:
 	inc r30
 	
 	out PORTA, r30
-
+	
+	push r17
+	ldi r17,0x8
+	rcall DELAY
+	pop r17
+	
 	;rcall PUNISH_2
+	
 
 	mov r18, r30
 	cpi r18, 0xFF
 	brne EXIT_INT0		;if <8 ==> exit; else call WIN
 	
-	rcall BOOT
+	rjmp WIN
 
 SECOND_WON:
 	lsl r31
 	inc r31
 	out PORTB, r31
 	
+	push r17
+	ldi r17,0x8
+	rcall DELAY
+	pop r17
+	
+
 	;rcall PUNISH_1	
 
 	mov r18, r31
 	cpi r18, 0xFF
 	brne EXIT_INT0		;if <8 ==> exit; else call WIN
 	
-	rcall BOOT
+	rjmp WIN
 
 EXIT_INT0:
 	pop r18
@@ -362,14 +371,20 @@ THE_GAME1:
 	inc r31
 	
 	out PORTB, r31
+	
 
+	push r17
+	ldi r17,0x8
+	rcall DELAY
+	pop r17
+	
 	;rcall PUNISH_1
 
 	mov r18, r31
 	cpi r18, 0xFF
 	brne EXIT_INT1		;if <8 ==> exit; else call WIN
 	
-	rcall BOOT
+	rjmp WIN
 
 FIRST_WON:
 	lsl r30
@@ -377,13 +392,18 @@ FIRST_WON:
 	
 	out PORTA, r30
 	
+	push r17
+	ldi r17,0x8
+	rcall DELAY
+	pop r17
+	
 	;rcall PUNISH_2
 
 	mov r18, r30
 	cpi r18, 0xFF
 	brne EXIT_INT1
 	
-	rcall BOOT
+	rjmp WIN
 
 EXIT_INT1:
 	pop r18
@@ -394,7 +414,7 @@ WIN:
 	clr r16			;PORTC = 0x00
 	mov PORTC, r16
 
-	cpi r16,0xFF
+	cpi r30,0xFF
 	breq FIRST_PROF
 	
 	ser r16
@@ -402,14 +422,18 @@ WIN:
 	clr r16
 	out PORTA, r16
 
+	ldi r17, 0x78
+	rcall DELAY
+
+	rjmp BOOT
+
 FIRST_PROF:
 	clr r16
 	out PORTB, r16
 	ser r16
 	out PORTA, r16
 
-	ldi r17,0x0B
-	ldi r16,0x1E
+	ldi r17,0x78
 	rcall DELAY
 
 	rjmp BOOT
