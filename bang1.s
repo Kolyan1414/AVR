@@ -8,6 +8,7 @@
 .EQU OCR0,0x3C			;TOP
 .EQU GICR,0x3B			;register for int0/1 interruption
 .EQU MCUCR, 0x35		;MCU control register
+.EQU GIFR,03A			;
 
 .EQU PORTA,0x1B			;PORTA is 1st player points
 .EQU DDRA,0x1A
@@ -219,12 +220,8 @@ ADD_ZERO:
 	ret
 
 INT0:
-	cli
 	push r18		;save this registers
 	push r17
-
-	clr r17
-	our PORTC,r16
 
 	mov r18, r0
 	cpi r18, 0x0		;if r0 == 0 ==> game is started	
@@ -275,22 +272,25 @@ SECOND_WON:
 	rjmp WIN
 
 EXIT_INT0:
+
+	clr r17
+	our PORTC,r17
+
 	ldi r17,0x8
 	rcall DELAY
+	
+	in r17, GIFR
+	ANDI r17,0x3F
+	out GIFR,r17
 
 	pop r17
 	pop r18
 	
-	sei
 	reti
 
 INT1:
-	cli
 	push r18		;save this registers
 	push r17
-
-	clr r17
-	our PORTC,r16
 
 	mov r18, r0
 	cpi r18, 0x0		;if r0 == 0 ==> game is started	
@@ -340,13 +340,19 @@ FIRST_WON:
 	rjmp WIN
 
 EXIT_INT1:
+
+	clr r17
+	our PORTC,r17
+
 	ldi r17,0x8
 	rcall DELAY
 
+	in r17, GIFR
+	ANDI r17,0x3F
+	out GIFR,r17
+
 	pop r17
 	pop r18
-
-	sei
 	
 	reti
 
