@@ -8,7 +8,7 @@
 .EQU OCR0,0x3C			;TOP
 .EQU GICR,0x3B			;register for int0/1 interruption
 .EQU MCUCR, 0x35		;MCU control register
-.EQU GIFR,03A			;
+.EQU GIFR,0x3A			;
 
 .EQU PORTA,0x1B			;PORTA is 1st player points
 .EQU DDRA,0x1A
@@ -27,15 +27,15 @@
 .EQU PIND,0x10
 
 rjmp BOOT			;0
-rjmp INT0			;1 rjmp INT0
-rjmp INT1			;2 rjmp INT1
+nop;rjmp INT0			;1 rjmp INT0
+nop;rjmp INT1			;2 rjmp INT1
 nop					;3
 nop					;4
 nop					;5
 nop					;6
 nop					;7
 nop					;8
-nop					;9 rjmp TIM0_OVR
+rjmp TIM0_OVR;nop					;9 rjmp TIM0_OVR
 nop					;10
 nop					;11
 nop					;12
@@ -86,10 +86,10 @@ BOOT:				;set MCU configuration like ports, pins, registers...
 	ldi r16, 0x0C		;r16=00001100
 	out PORTD, r16		;input pins turn pull resistance on
 
-	ldi r16,0x01		;Запуск таймера (на вход поступает тактовая частота)
+	ldi r16,0x03		;Запуск таймера (на вход поступает тактовая частота / 64)
 	out TCCR0,r16	
 
-	ldi r16,0x00		;Запрет обработки прерываний таймера
+	ldi r16,0x01		;Запрет^-1 обработки прерываний таймера
 	out TIMSK,r16		
 	
 	ldi r16,0xC0
@@ -274,19 +274,15 @@ SECOND_WON:
 EXIT_INT0:
 
 	clr r17
-	our PORTC,r17
+	out PORTC,r17
 
-	ldi r17,0x8
+	ldi r17,0x1
 	rcall DELAY
-	
-	in r17, GIFR
-	ANDI r17,0x3F
-	out GIFR,r17
 
 	pop r17
 	pop r18
 	
-	reti
+	ret
 
 INT1:
 	push r18		;save this registers
@@ -342,19 +338,15 @@ FIRST_WON:
 EXIT_INT1:
 
 	clr r17
-	our PORTC,r17
+	out PORTC,r17
 
-	ldi r17,0x8
+	ldi r17,0x1
 	rcall DELAY
-
-	in r17, GIFR
-	ANDI r17,0x3F
-	out GIFR,r17
 
 	pop r17
 	pop r18
 	
-	reti
+	ret
 
 WIN:
 	clr r16			;PORTC = 0x00
@@ -383,3 +375,30 @@ FIRST_PROF:
 	rcall DELAY
 
 	rjmp BOOT
+
+TIM0_OVR:
+	push r16
+	posh r17	
+
+	in r16, PORTD
+	ANDI r16, 0XC
+	mov r17, r16
+
+	cpi r17, 0x4
+	brne METOCKA
+
+	rcall INT0
+
+	rjmp EXIT_TIM0
+
+METOCKA:
+	mov r17,r16
+	cpi r17, 0xC
+	brne EXIT_TIM0
+	
+	rcall INT1
+
+EXIT_TIM0:
+	pop r17
+	pop r16
+	reti
