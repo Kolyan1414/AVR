@@ -27,15 +27,15 @@
 .EQU PIND,0x10
 
 rjmp BOOT			;0
-nop;rjmp INT0			;1 rjmp INT0
-nop;rjmp INT1			;2 rjmp INT1
+rjmp INT0			;1 rjmp INT0
+rjmp INT1			;2 rjmp INT1
 nop					;3
 nop					;4
 nop					;5
 nop					;6
 nop					;7
 nop					;8
-rjmp TIM0_OVR;nop					;9 rjmp TIM0_OVR
+nop;rjmp TIM0_OVR;nop					;9 rjmp TIM0_OVR
 nop					;10
 nop					;11
 nop					;12
@@ -188,7 +188,7 @@ RANDOM:					;Подает сигнал к началу раунда с заде�
 
 	ser r17				;Зажигание сигнальных диодов(весь PORTC)
 	out PORTC, r17
-	ldi r17, 0x30
+	ldi r17, 0x25
 	rcall DELAY
 	clr r17
 	out PORTC, r17			;Сигнальные диоды гаснут
@@ -220,6 +220,7 @@ ADD_ZERO:
 	ret
 
 INT0:
+	cli
 	push r18		;save this registers
 	push r17
 
@@ -278,13 +279,21 @@ EXIT_INT0:
 
 	ldi r17,0x1
 	rcall DELAY
+	
+	mov r17,GIFR
+	ANDI r17,0x3F
+	out GIFR,r17
 
 	pop r17
 	pop r18
 	
-	ret
+	sei
+
+	reti
 
 INT1:
+	cli
+
 	push r18		;save this registers
 	push r17
 
@@ -343,10 +352,16 @@ EXIT_INT1:
 	ldi r17,0x1
 	rcall DELAY
 
+	mov r17,GIFR
+	ANDI r17,0x3F
+	out GIFR,r17
+
 	pop r17
 	pop r18
 	
-	ret
+	sei
+
+	reti
 
 WIN:
 	clr r16			;PORTC = 0x00
