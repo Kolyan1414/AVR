@@ -28,17 +28,17 @@
 	.EQU DDRD,0x11
 	.EQU PIND,0x10
 
-;21 строка про перрыввания
-	nop; 				;rjmp RESET			;0
-	rjmp INT0			;1 rjmp INT0
-	rjmp INT1			;2 rjmp INT1
+;Interrupts
+	nop;				;0 rjmp RESET
+	rjmp INT0			;1
+	rjmp INT1			;2
 	nop					;3
 	nop					;4
 	nop					;5
 	nop					;6
 	nop					;7
 	nop					;8
-	nop					;9 rjmp TIM0_OVR
+	nop					;9
 	nop					;10
 	nop					;11
 	nop					;12
@@ -50,6 +50,7 @@
 	nop					;18
 	nop					;19
 	nop					;20
+
 ;Начальные установки(вход/выход, стек, таймер и проч)
 	ldi r16, 0x2 		;setting stack pointer
 	out SPH, r16
@@ -90,12 +91,6 @@ NEW_GAME:
 	ldi r31, 0x00
 
 	NEW_ROUND:
-		pop r16
-		pop r16
-		pop r16
-		pop r16
-		pop r16
-		pop r16
 		ldi r16, 0xFF
 		mov r1, r16	;PORTA не потушен кнопкой
 		mov r2, r16	;PORTB не потушен кнопкой
@@ -104,35 +99,34 @@ NEW_GAME:
 		mov r0, r16	;Игроки к игре не готовы(0й бит - игрок A, 1й бит - игрок В)
 		mov r4, r16	;BOOT_LED не активен
 
-		
-
 		rcall SHOW_SCORE				;Показывать счет в течение 2с
 		ldi r20, 0xA0
 		rcall DELAY
-
 		
 		clr r16							;Очистка буфера прерываний int1/int0
 		out GIFR, r16
 		sei 							;Разешение прерываний
-
-		ser r16
-		out PORTC, r16
-
+	
 		rcall BOOT_LED	
 		clr r16				;"ПРОБЕГАНИЕ ДИОДОВ" до тех пор пока игроки не объявят о готовности
 		mov r4, r16					;BOOT_LED не активен
 
+		cli
 		clr r16
-		out PORTC, r16
-
+		out GICR, r16
+		ldi r20, 0x01
+		rcall DELAY
 
 		ser r16
 		mov r0, r16					;Игроки к игре готовы
+
 		clr r16							;Очистка буфера прерываний int1/int0
 		out GIFR, r16
-
 		ldi r16,0xC0 		;r16=11000000
 		out GICR, r16		;allow interrupt int1/0
+		sei	
+		clr r16							;Очистка буфера прерываний int1/int0
+		out GIFR, r16
 
 		rcall RANDOM
 
@@ -175,6 +169,7 @@ INT0:
 				cli
 				rjmp TAP
 MINUS0:
+	rcall PUNISH1
 	cpi r30, 0x00
 	breq MIN0
 		lsr r30
@@ -207,6 +202,7 @@ INT1:
 				cli
 				rjmp TAP
 MINUS1:
+	rcall PUNISH2
 	cpi r31, 0x00
 	breq MIN1
 		lsr r31
@@ -281,10 +277,14 @@ CYCLE:
 	mov r17, r2
 	or r16, r17
 	cpi r16, 0
+	sei
 	breq EXIT
 
 	rjmp CYCLE
 EXIT:
+	cli
+	clr r16							;Очистка буфера прерываний int1/int0
+	out GIFR, r16
 ret
 
 ;!"РАНДОМ" зажигает PORTC c заранее не известной задержкой
@@ -292,14 +292,16 @@ RANDOM:					;Подает сигнал к началу раунда с заде�
 	
 	in r17,TCNT0			;Считываем время из таймера
 
-	rcall CSR17			;Multiplies r17 by 2
-	rcall CSR17 		;Multiplies r17 by 2
-	rcall CSR17 		;Multiplies r17 by 2
+	rcall CSR17				;Multiplies r17 by 2
+	rcall CSR17 			;Multiplies r17 by 2
+	rcall CSR17 			;Multiplies r17 by 2
 	lsr r17
 	mov r20, r17
 	rcall DELAY
+	ldi r20, 0x28
+	rcall DELAY
 
-	ser r17				;Зажигание сигнальных диодов(весь PORTC) на 2,4 с
+	ldi r17, 0x20			;Зажигание сигнальных диодов(весь PORTC) на 2,4 с
 	out PORTC, r17
 	ldi r20, 0x60
 	rcall DELAY
@@ -335,3 +337,33 @@ SHOW_SCORE:
 	out PORTA, r30
 	out PORTB, r31
 ret
+
+PUNISH1:
+	push r17
+
+	ldi r17, 0x08
+	out PORTC, r17
+
+	ldi r20, 0x01
+	rcall DELAY
+
+	clr r17
+	out PORTC, r17
+
+	pop r17
+	ret
+
+PUNISH2:
+	push r17
+
+	ldi r17, 0x10
+	out PORTC, r17
+
+	ldi r20, 0x01
+	rcall DELAY
+
+	clr r17
+	out PORTC, r17
+
+	pop r17
+	ret
